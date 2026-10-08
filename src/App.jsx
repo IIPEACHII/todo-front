@@ -1,22 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
-
 import { 
   CheckCircle2, Circle, Trash2, Plus, Clock, Settings, RefreshCw, 
   AlertCircle, Sparkles, Server, Check, X, Search, Edit2, 
-  ArrowUpDown, LogOut, User as UserIcon, Lock, Mail, ArrowRight
+  ArrowUpDown, LogOut, User as UserIcon, Lock, Mail, ArrowRight, Leaf
 } from 'lucide-react';
 
-
 const getInitialApiUrl = () => {
-  // Check for Vite environment variables first
   if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
-  // Fallback for Create React App or Node environments
   if (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL) {
     return process.env.REACT_APP_API_URL;
   }
-  // Default fallback for local development
   return 'http://localhost:5000';
 };
 
@@ -44,7 +39,6 @@ export default function App() {
   const [apiUrl, setApiUrl] = useState(getInitialApiUrl);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [pendingApiUrl, setPendingApiUrl] = useState(getInitialApiUrl);
-  const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const getHeaders = () => ({
@@ -52,6 +46,7 @@ export default function App() {
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   });
 
+  // Authentication Handler
   const handleAuth = async (e) => {
     e.preventDefault();
     setAuthError('');
@@ -78,7 +73,6 @@ export default function App() {
       localStorage.setItem('taskflow_user', data.email);
       setAuthPassword('');
       setAuthEmail('');
-      setIsConnected(true);
     } catch (err) {
       setAuthError(err.message);
     } finally {
@@ -94,6 +88,7 @@ export default function App() {
     localStorage.removeItem('taskflow_user');
   };
 
+  // Fetch Todos
   const fetchTodos = async (targetUrl = apiUrl) => {
     if (!token) return;
     setIsLoading(true);
@@ -112,10 +107,8 @@ export default function App() {
 
       const data = await response.json();
       setTodos(data);
-      setIsConnected(true);
     } catch (err) {
       console.warn('Backend issue:', err.message);
-      setIsConnected(false);
     } finally {
       setIsLoading(false);
     }
@@ -125,6 +118,7 @@ export default function App() {
     if (token) fetchTodos(apiUrl);
   }, [apiUrl, token]);
 
+  // Add Todo
   const handleAddTodo = async (e) => {
     e.preventDefault();
     const trimmed = newTodoText.trim();
@@ -149,11 +143,11 @@ export default function App() {
       setTodos((prev) => prev.map((t) => (t._id === tempId ? savedTodo : t)));
     } catch (err) {
       console.error('Error saving todo:', err);
-      // Remove temp item on failure
       setTodos((prev) => prev.filter((t) => t._id !== tempId));
     }
   };
 
+  // Toggle Todo Status
   const handleToggleTodo = async (todo) => {
     const updatedStatus = !todo.completed;
     setTodos((prev) => prev.map((t) => (t._id === todo._id ? { ...t, completed: updatedStatus } : t)));
@@ -170,6 +164,7 @@ export default function App() {
     }
   };
 
+  // Edit Todo
   const handleStartEdit = (todo) => {
     setEditingId(todo._id);
     setEditingText(todo.text);
@@ -196,6 +191,7 @@ export default function App() {
     }
   };
 
+  // Delete Todo
   const confirmDelete = async () => {
     if (!deleteCandidate) return;
     const targetId = deleteCandidate._id;
@@ -216,12 +212,13 @@ export default function App() {
   const formatDateTime = (isoDate) => {
     if (!isoDate) return '';
     try {
-      return new Date(isoDate).toLocaleString('en-US', {
+      return new Date(isoDate).toLocaleString('th-TH', {
         month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
       });
     } catch { return ''; }
   };
 
+  // Filter & Sort Logic
   const filteredTodos = useMemo(() => {
     const result = todos.filter((todo) => {
       const matchesFilter = filter === 'all' ? true : filter === 'active' ? !todo.completed : todo.completed;
@@ -239,106 +236,112 @@ export default function App() {
     });
   }, [todos, filter, searchQuery, sortBy]);
 
+  // Statistics
+  const totalTasks = todos.length;
+  const completedTasks = todos.filter(t => t.completed).length;
+  const progressPercent = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+
+  // Login / Register Screen (Botanical Theme)
   if (!token) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 selection:bg-indigo-500 selection:text-white">
+      <div className="min-h-screen bg-[#2A3828] text-[#D1EDD3] flex flex-col items-center justify-center p-4 relative selection:bg-[#ACC5A6] selection:text-[#2A3828]">
         
-        {/* Settings button to adjust backend URL if needed */}
+        {/* Settings button */}
         <button
           onClick={() => setIsSettingsOpen(true)}
           title="API Configuration"
-          className="absolute top-6 right-6 p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition"
+          className="absolute top-6 right-6 p-2.5 rounded-xl bg-[#5C7057]/30 border border-[#ACC5A6]/20 text-[#ACC5A6] hover:text-[#D1EDD3] transition"
         >
           <Settings className="w-5 h-5" />
         </button>
 
-        <div className="w-full max-w-sm bg-slate-900/80 border border-slate-800 p-8 rounded-3xl shadow-2xl backdrop-blur-sm">
+        <div className="w-full max-w-sm bg-[#5C7057]/20 border border-[#ACC5A6]/20 p-8 rounded-3xl shadow-2xl backdrop-blur-md">
           <div className="flex justify-center mb-6">
-            <div className="p-3.5 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-2xl shadow-lg shadow-indigo-500/20">
-              <Sparkles className="w-8 h-8 text-white" />
+            <div className="p-4 bg-[#89A482] rounded-2xl shadow-lg shadow-[#89A482]/20 text-[#2A3828]">
+              <Leaf className="w-8 h-8" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-center text-white mb-2">
-            TaskFlow
+          <h1 className="text-2xl font-bold text-center text-[#D1EDD3] mb-1 tracking-wide">
+            AuraTask
           </h1>
-          <p className="text-center text-slate-400 text-sm mb-8">
-            {isAuthMode === 'login' ? 'Sign in to sync your tasks securely.' : 'Create an account to get started.'}
+          <p className="text-center text-[#ACC5A6] text-xs mb-6">
+            {isAuthMode === 'login' ? 'เข้าสู่ระบบเพื่อซิงค์ข้อมูลงานของคุณ' : 'สร้างบัญชีผู้ใช้ใหม่'}
           </p>
 
           <form onSubmit={handleAuth} className="flex flex-col gap-4">
             {authError && (
-              <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs p-3 rounded-xl flex gap-2">
+              <div className="bg-rose-900/30 border border-rose-500/30 text-rose-200 text-xs p-3 rounded-xl flex gap-2 items-center">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{authError}</span>
               </div>
             )}
             <div className="relative">
-              <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+              <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#89A482]" />
               <input
                 type="email"
                 required
                 value={authEmail}
                 onChange={(e) => setAuthEmail(e.target.value)}
-                placeholder="Email address"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500/70"
+                placeholder="อีเมล"
+                className="w-full bg-[#5C7057]/30 border border-[#ACC5A6]/30 rounded-xl pl-10 pr-4 py-3 text-sm text-[#D1EDD3] placeholder-[#89A482] focus:outline-none focus:border-[#ACC5A6]"
               />
             </div>
             <div className="relative">
-              <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+              <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#89A482]" />
               <input
                 type="password"
                 required
                 value={authPassword}
                 onChange={(e) => setAuthPassword(e.target.value)}
-                placeholder="Password"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500/70"
+                placeholder="รหัสผ่าน"
+                className="w-full bg-[#5C7057]/30 border border-[#ACC5A6]/30 rounded-xl pl-10 pr-4 py-3 text-sm text-[#D1EDD3] placeholder-[#89A482] focus:outline-none focus:border-[#ACC5A6]"
               />
             </div>
             <button
               type="submit"
               disabled={isAuthLoading}
-              className="mt-2 w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl py-3 text-sm font-medium transition shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 disabled:opacity-50"
+              className="mt-2 w-full bg-[#ACC5A6] hover:bg-[#D1EDD3] text-[#2A3828] rounded-xl py-3 text-sm font-semibold transition shadow-lg shadow-[#ACC5A6]/10 flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {isAuthLoading ? 'Please wait...' : (isAuthMode === 'login' ? 'Sign In' : 'Create Account')}
+              {isAuthLoading ? 'กำลังดำเนินการ...' : (isAuthMode === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก')}
               {!isAuthLoading && <ArrowRight className="w-4 h-4" />}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm">
-            <span className="text-slate-500">
-              {isAuthMode === 'login' ? "Don't have an account? " : "Already have an account? "}
+          <div className="mt-6 text-center text-xs">
+            <span className="text-[#89A482]">
+              {isAuthMode === 'login' ? "ยังไม่มีบัญชีใช่ไหม? " : "มีบัญชีอยู่แล้วใช่ไหม? "}
             </span>
             <button
               onClick={() => setIsAuthMode(isAuthMode === 'login' ? 'register' : 'login')}
-              className="text-indigo-400 hover:text-indigo-300 font-medium transition"
+              className="text-[#ACC5A6] hover:text-[#D1EDD3] font-medium transition underline underline-offset-2"
             >
-              {isAuthMode === 'login' ? 'Sign up' : 'Log in'}
+              {isAuthMode === 'login' ? 'ลงทะเบียนที่นี่' : 'เข้าสู่ระบบ'}
             </button>
           </div>
         </div>
 
-        {/* Re-use Settings Modal Logic */}
+        {/* Settings Modal */}
         {isSettingsOpen && (
-          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
-              <button onClick={() => setIsSettingsOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-200">
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-[#2A3828] border border-[#ACC5A6]/30 rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-[#D1EDD3]">
+              <button onClick={() => setIsSettingsOpen(false)} className="absolute top-4 right-4 text-[#ACC5A6] hover:text-[#D1EDD3]">
                 <X className="w-5 h-5" />
               </button>
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Server className="w-5 h-5 text-indigo-400" /> API Environment Settings
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Server className="w-5 h-5 text-[#ACC5A6]" /> ตั้งค่า API Backend
               </h2>
               <div className="mt-4 flex flex-col gap-2">
-                <label className="text-xs font-medium text-slate-300">Backend URL</label>
+                <label className="text-xs text-[#ACC5A6]">Backend URL</label>
                 <input
                   type="text"
                   value={pendingApiUrl}
                   onChange={(e) => setPendingApiUrl(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+                  className="w-full bg-[#5C7057]/30 border border-[#ACC5A6]/30 rounded-xl px-3.5 py-2.5 text-xs text-[#D1EDD3] focus:outline-none focus:border-[#ACC5A6] font-mono"
                 />
               </div>
               <div className="mt-6 flex justify-end gap-2.5">
-                <button onClick={() => setIsSettingsOpen(false)} className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:bg-slate-800">Cancel</button>
-                <button onClick={() => { setApiUrl(pendingApiUrl); setIsSettingsOpen(false); }} className="px-4 py-2 rounded-xl text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-medium">Save</button>
+                <button onClick={() => setIsSettingsOpen(false)} className="px-4 py-2 rounded-xl text-xs text-[#ACC5A6] hover:bg-[#5C7057]/30">ยกเลิก</button>
+                <button onClick={() => { setApiUrl(pendingApiUrl); setIsSettingsOpen(false); }} className="px-4 py-2 rounded-xl text-xs bg-[#ACC5A6] text-[#2A3828] font-semibold hover:bg-[#D1EDD3]">บันทึก</button>
               </div>
             </div>
           </div>
@@ -347,96 +350,131 @@ export default function App() {
     );
   }
 
+  // Main Dashboard (Botanical Palette Theme)
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center py-8 px-4 sm:px-6 selection:bg-indigo-500 selection:text-white">
-      <div className="w-full max-w-2xl flex flex-col gap-6">
+    <div className="min-h-screen bg-[#2A3828] text-[#D1EDD3] flex flex-col items-center py-8 px-4 sm:px-6 selection:bg-[#ACC5A6] selection:text-[#2A3828]">
+      <div className="w-full max-w-3xl flex flex-col gap-6">
         
-        <header className="flex flex-col gap-4 border-b border-slate-800 pb-5">
+        {/* Header Section */}
+        <header className="flex flex-col gap-4 bg-[#5C7057]/20 border border-[#ACC5A6]/20 p-6 rounded-3xl backdrop-blur-md">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-xl shadow-lg shadow-indigo-500/20">
-                <Sparkles className="w-6 h-6 text-white" />
+              <div className="p-3 bg-[#89A482] rounded-2xl shadow-lg shadow-[#89A482]/20 text-[#2A3828]">
+                <Leaf className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">TaskFlow</h1>
-                <p className="text-xs text-slate-400">Secured with JWT</p>
+                <h1 className="text-2xl font-bold tracking-wide text-[#D1EDD3]">AuraTask</h1>
+                <p className="text-xs text-[#ACC5A6]">ระบบจัดการงาน โทนสี Botanical</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <button onClick={() => fetchTodos(apiUrl)} title="Refresh" className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition">
-                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-indigo-400' : ''}`} />
+              <button onClick={() => fetchTodos(apiUrl)} title="Refresh" className="p-2.5 rounded-xl bg-[#5C7057]/30 border border-[#ACC5A6]/20 text-[#ACC5A6] hover:text-[#D1EDD3] transition">
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-[#ACC5A6]' : ''}`} />
               </button>
-              <button onClick={() => setIsSettingsOpen(true)} title="Settings" className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition">
+              <button onClick={() => setIsSettingsOpen(true)} title="Settings" className="p-2.5 rounded-xl bg-[#5C7057]/30 border border-[#ACC5A6]/20 text-[#ACC5A6] hover:text-[#D1EDD3] transition">
                 <Settings className="w-4 h-4" />
               </button>
             </div>
           </div>
-          
-          <div className="flex items-center justify-between text-xs px-3.5 py-2.5 rounded-lg border bg-slate-900/60 backdrop-blur border-slate-800/80">
-            <div className="flex items-center gap-2 text-slate-300">
-              <UserIcon className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Signed in as <strong className="font-medium">{currentUser}</strong></span>
+
+          {/* User Bar & Progress */}
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-2 border-t border-[#ACC5A6]/10">
+            <div className="flex items-center gap-2 text-xs text-[#ACC5A6]">
+              <UserIcon className="w-3.5 h-3.5 text-[#ACC5A6]" />
+              <span>เข้าสู่ระบบโดย <strong className="font-medium text-[#D1EDD3]">{currentUser}</strong></span>
             </div>
-            <button onClick={handleLogout} className="flex items-center gap-1.5 text-rose-400 hover:text-rose-300 transition">
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Logout</span>
-            </button>
+
+            <div className="flex items-center gap-4 w-full sm:w-auto">
+              {/* Progress Bar */}
+              <div className="flex-1 sm:w-36 bg-[#5C7057]/40 h-2 rounded-full overflow-hidden">
+                <div 
+                  className="bg-[#ACC5A6] h-full rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${progressPercent}%` }}
+                ></div>
+              </div>
+              <span className="text-xs text-[#ACC5A6] font-medium">{progressPercent}%</span>
+
+              <button onClick={handleLogout} className="flex items-center gap-1.5 text-xs text-rose-300 hover:text-rose-200 transition ml-2">
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">ออกจากระบบ</span>
+              </button>
+            </div>
           </div>
         </header>
 
-        <form onSubmit={handleAddTodo} className="relative group">
-          <div className="flex items-center gap-2 p-1.5 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl shadow-black/40 focus-within:border-indigo-500/80 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+        {/* Input Add Task Form */}
+        <form onSubmit={handleAddTodo} className="relative">
+          <div className="flex items-center gap-2 p-2 bg-[#5C7057]/30 border border-[#ACC5A6]/20 rounded-2xl shadow-xl focus-within:border-[#ACC5A6] transition-all">
             <input
               type="text"
               value={newTodoText}
               onChange={(e) => setNewTodoText(e.target.value)}
-              placeholder="What needs to be done today?..."
-              className="flex-1 bg-transparent px-4 py-3 text-slate-100 placeholder-slate-500 text-sm focus:outline-none"
+              placeholder="+ เพิ่มรายการงานใหม่วันนี้..."
+              className="flex-1 bg-transparent px-4 py-2.5 text-[#D1EDD3] placeholder-[#89A482] text-sm focus:outline-none"
             />
-            <button type="submit" disabled={!newTodoText.trim()} className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm flex items-center gap-2 shadow-md shadow-indigo-600/30 transition disabled:opacity-40 active:scale-95">
-              <Plus className="w-4 h-4" /> <span>Add</span>
+            <button 
+              type="submit" 
+              disabled={!newTodoText.trim()} 
+              className="px-5 py-2.5 rounded-xl bg-[#ACC5A6] hover:bg-[#D1EDD3] text-[#2A3828] font-semibold text-sm flex items-center gap-2 transition disabled:opacity-40"
+            >
+              <Plus className="w-4 h-4" /> <span>เพิ่ม</span>
             </button>
           </div>
         </form>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
-          <div className="flex items-center bg-slate-900 border border-slate-800 p-1 rounded-xl text-xs">
+        {/* Filters, Sort & Search Bar */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="flex items-center bg-[#5C7057]/30 border border-[#ACC5A6]/20 p-1 rounded-xl text-xs">
             {['all', 'active', 'completed'].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-lg transition font-medium capitalize ${filter === f ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                className={`px-3 py-1.5 rounded-lg transition font-medium capitalize ${
+                  filter === f ? 'bg-[#89A482] text-[#2A3828] shadow' : 'text-[#ACC5A6] hover:text-[#D1EDD3]'
+                }`}
               >
-                {f}
+                {f === 'all' ? 'ทั้งหมด' : f === 'active' ? 'กำลังทำ' : 'เสร็จแล้ว'}
               </button>
             ))}
           </div>
 
           <div className="flex items-center gap-2 flex-1 sm:justify-end">
-            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 hover:border-slate-700">
-              <ArrowUpDown className="w-3.5 h-3.5 text-indigo-400" />
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="bg-transparent text-slate-200 focus:outline-none cursor-pointer">
-                <option value="newest" className="bg-slate-900">Newest first</option>
-                <option value="oldest" className="bg-slate-900">Oldest first</option>
-                <option value="az" className="bg-slate-900">A &rarr; Z</option>
-                <option value="za" className="bg-slate-900">Z &rarr; A</option>
-                <option value="status" className="bg-slate-900">Pending first</option>
+            <div className="flex items-center gap-1.5 bg-[#5C7057]/30 border border-[#ACC5A6]/20 rounded-xl px-2.5 py-1.5 text-xs text-[#ACC5A6]">
+              <ArrowUpDown className="w-3.5 h-3.5 text-[#ACC5A6]" />
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value)} 
+                className="bg-transparent text-[#D1EDD3] focus:outline-none cursor-pointer"
+              >
+                <option value="newest" className="bg-[#2A3828]">ใหม่สุด</option>
+                <option value="oldest" className="bg-[#2A3828]">เก่าสุด</option>
+                <option value="az" className="bg-[#2A3828]">ก &rarr; ฮ / A &rarr; Z</option>
+                <option value="za" className="bg-[#2A3828]">ฮ &rarr; ก / Z &rarr; A</option>
+                <option value="status" className="bg-[#2A3828]">รอดำเนินการขึ้นก่อน</option>
               </select>
             </div>
-            <div className="relative flex-1 max-w-[210px]">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search..." className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500/70" />
+            
+            <div className="relative flex-1 max-w-[200px]">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#89A482]" />
+              <input 
+                type="text" 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)} 
+                placeholder="ค้นหา..." 
+                className="w-full bg-[#5C7057]/30 border border-[#ACC5A6]/20 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-[#D1EDD3] placeholder-[#89A482] focus:outline-none focus:border-[#ACC5A6]" 
+              />
             </div>
           </div>
         </div>
 
+        {/* Task List */}
         <div className="flex flex-col gap-2.5">
           {filteredTodos.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-4 border border-dashed border-slate-800/80 rounded-2xl bg-slate-900/30 text-center">
-              <CheckCircle2 className="w-7 h-7 text-slate-500 mb-3" />
-              <h3 className="text-sm font-medium text-slate-300">No tasks found</h3>
-              <p className="text-xs text-slate-500 mt-1 max-w-xs">Nothing to see here right now.</p>
+            <div className="flex flex-col items-center justify-center py-16 px-4 border border-dashed border-[#ACC5A6]/20 rounded-2xl bg-[#5C7057]/10 text-center">
+              <CheckCircle2 className="w-8 h-8 text-[#89A482] mb-2" />
+              <h3 className="text-sm font-medium text-[#D1EDD3]">ไม่พบรายการงาน</h3>
+              <p className="text-xs text-[#89A482] mt-1">ไม่มีงานในเงื่อนไขการค้นหานี้</p>
             </div>
           ) : (
             filteredTodos.map((todo) => {
@@ -444,46 +482,59 @@ export default function App() {
               const isEditing = editingId === todo._id;
 
               return (
-                <div key={todo._id} className={`group flex items-start gap-3 p-3.5 rounded-xl border transition-all ${todo.completed ? 'bg-slate-900/40 border-slate-800/50' : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'}`}>
+                <div 
+                  key={todo._id} 
+                  className={`group flex items-start gap-3 p-4 rounded-2xl border transition-all ${
+                    todo.completed 
+                      ? 'bg-[#5C7057]/15 border-[#ACC5A6]/10 opacity-60' 
+                      : 'bg-[#5C7057]/30 border-[#ACC5A6]/20 hover:border-[#ACC5A6]/40'
+                  }`}
+                >
                   <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                    <button onClick={() => handleToggleTodo(todo)} disabled={isEditing} className="mt-0.5 text-slate-500 hover:text-indigo-400">
-                      {todo.completed ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <Circle className="w-5 h-5" />}
+                    <button onClick={() => handleToggleTodo(todo)} disabled={isEditing} className="mt-0.5 text-[#89A482] hover:text-[#ACC5A6]">
+                      {todo.completed ? <CheckCircle2 className="w-5 h-5 text-[#ACC5A6]" /> : <Circle className="w-5 h-5" />}
                     </button>
+                    
                     <div className="flex flex-col gap-1 flex-1">
                       {isEditing ? (
-                        <div className="flex flex-col gap-1.5">
-                          <input
-                            type="text" autoFocus value={editingText}
-                            onChange={(e) => setEditingText(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleSaveEdit(todo._id);
-                              if (e.key === 'Escape') setEditingId(null);
-                            }}
-                            className="bg-slate-950 border border-indigo-500/70 rounded-lg px-2.5 py-1.5 text-sm text-slate-100 focus:outline-none"
-                          />
-                        </div>
+                        <input
+                          type="text" 
+                          autoFocus 
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveEdit(todo._id);
+                            if (e.key === 'Escape') setEditingId(null);
+                          }}
+                          className="bg-[#2A3828] border border-[#ACC5A6] rounded-lg px-2.5 py-1 text-sm text-[#D1EDD3] focus:outline-none"
+                        />
                       ) : (
-                        <p onDoubleClick={() => !todo.completed && handleStartEdit(todo)} className={`text-sm break-words ${todo.completed ? 'line-through text-slate-500' : 'text-slate-100'}`}>
+                        <p 
+                          onDoubleClick={() => !todo.completed && handleStartEdit(todo)} 
+                          className={`text-sm break-words ${todo.completed ? 'line-through text-[#89A482]' : 'text-[#D1EDD3]'}`}
+                        >
                           {todo.text}
                         </p>
                       )}
+                      
                       {formattedDate && !isEditing && (
-                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                          <Clock className="w-3 h-3" /> {formattedDate} {todo.updatedAt && '(edited)'}
+                        <div className="flex items-center gap-1.5 text-[11px] text-[#89A482]">
+                          <Clock className="w-3 h-3" /> {formattedDate} {todo.updatedAt && '(แก้ไขแล้ว)'}
                         </div>
                       )}
                     </div>
                   </div>
+
                   <div className="flex items-center gap-1">
                     {isEditing ? (
                       <>
-                        <button onClick={() => handleSaveEdit(todo._id)} className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg"><Check className="w-4 h-4" /></button>
-                        <button onClick={() => setEditingId(null)} className="p-1.5 text-slate-400 hover:bg-slate-800 rounded-lg"><X className="w-4 h-4" /></button>
+                        <button onClick={() => handleSaveEdit(todo._id)} className="p-1.5 text-[#ACC5A6] hover:bg-[#ACC5A6]/10 rounded-lg"><Check className="w-4 h-4" /></button>
+                        <button onClick={() => setEditingId(null)} className="p-1.5 text-[#89A482] hover:bg-[#5C7057]/30 rounded-lg"><X className="w-4 h-4" /></button>
                       </>
                     ) : (
                       <>
-                        <button onClick={() => handleStartEdit(todo)} className="p-1.5 text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg opacity-80 sm:opacity-0 group-hover:opacity-100"><Edit2 className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => setDeleteCandidate(todo)} className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg opacity-80 sm:opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
+                        <button onClick={() => handleStartEdit(todo)} className="p-1.5 text-[#89A482] hover:text-[#ACC5A6] hover:bg-[#ACC5A6]/10 rounded-lg opacity-80 sm:opacity-0 group-hover:opacity-100"><Edit2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => setDeleteCandidate(todo)} className="p-1.5 text-[#89A482] hover:text-rose-300 hover:bg-rose-500/10 rounded-lg opacity-80 sm:opacity-0 group-hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
                       </>
                     )}
                   </div>
@@ -494,28 +545,30 @@ export default function App() {
         </div>
       </div>
 
+      {/* Settings Modal */}
       {isSettingsOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 relative">
-            <button onClick={() => setIsSettingsOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-200"><X className="w-5 h-5" /></button>
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2"><Server className="w-5 h-5 text-indigo-400" /> API Settings</h2>
-            <div className="mt-4"><input type="text" value={pendingApiUrl} onChange={(e) => setPendingApiUrl(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 font-mono" /></div>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#2A3828] border border-[#ACC5A6]/30 rounded-2xl w-full max-w-md p-6 relative text-[#D1EDD3]">
+            <button onClick={() => setIsSettingsOpen(false)} className="absolute top-4 right-4 text-[#ACC5A6] hover:text-[#D1EDD3]"><X className="w-5 h-5" /></button>
+            <h2 className="text-lg font-semibold flex items-center gap-2"><Server className="w-5 h-5 text-[#ACC5A6]" /> ตั้งค่า API Backend</h2>
+            <div className="mt-4"><input type="text" value={pendingApiUrl} onChange={(e) => setPendingApiUrl(e.target.value)} className="w-full bg-[#5C7057]/30 border border-[#ACC5A6]/30 rounded-xl px-3.5 py-2.5 text-xs text-[#D1EDD3] font-mono focus:outline-none focus:border-[#ACC5A6]" /></div>
             <div className="mt-6 flex justify-end gap-2.5">
-              <button onClick={() => setIsSettingsOpen(false)} className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:bg-slate-800">Cancel</button>
-              <button onClick={() => { setApiUrl(pendingApiUrl); setIsSettingsOpen(false); }} className="px-4 py-2 rounded-xl text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-medium">Save</button>
+              <button onClick={() => setIsSettingsOpen(false)} className="px-4 py-2 rounded-xl text-xs text-[#ACC5A6] hover:bg-[#5C7057]/30">ยกเลิก</button>
+              <button onClick={() => { setApiUrl(pendingApiUrl); setIsSettingsOpen(false); }} className="px-4 py-2 rounded-xl text-xs bg-[#ACC5A6] text-[#2A3828] font-semibold hover:bg-[#D1EDD3]">บันทึก</button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
       {deleteCandidate && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-6">
-            <h3 className="font-semibold text-white mb-2">Delete Task?</h3>
-            <p className="text-xs text-slate-400 mb-5">Remove "{deleteCandidate.text}"?</p>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#2A3828] border border-[#ACC5A6]/30 rounded-2xl w-full max-w-sm p-6 text-[#D1EDD3]">
+            <h3 className="font-semibold mb-2">ยืนยันการลบงาน?</h3>
+            <p className="text-xs text-[#ACC5A6] mb-5">คุณต้องการลบรายการ "{deleteCandidate.text}" ใช่หรือไม่?</p>
             <div className="flex justify-end gap-2.5">
-              <button onClick={() => setDeleteCandidate(null)} className="px-3.5 py-2 rounded-xl text-xs text-slate-400 hover:bg-slate-800">Cancel</button>
-              <button onClick={confirmDelete} className="px-4 py-2 rounded-xl text-xs bg-rose-600 hover:bg-rose-500 text-white">Delete</button>
+              <button onClick={() => setDeleteCandidate(null)} className="px-3.5 py-2 rounded-xl text-xs text-[#ACC5A6] hover:bg-[#5C7057]/30">ยกเลิก</button>
+              <button onClick={confirmDelete} className="px-4 py-2 rounded-xl text-xs bg-rose-600 hover:bg-rose-500 text-white font-medium">ลบรายการ</button>
             </div>
           </div>
         </div>
